@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Daily Tasks</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons via CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom scrollbar hiding for cleaner mobile look */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Smooth transitions for modal */
+        #add-modal {
+            transition: opacity 0.3s ease;
+        }
+
+        #modal-content {
+            transition: transform 0.3s ease;
+        }
+    </style>
+</head>
+
+<body class="bg-[#FDFBF7] text-[#4A443E] font-sans selection:bg-[#EAE4D9] antialiased">
+
+    <!-- Mobile container constraint -->
+    <div class="max-w-md mx-auto min-h-screen relative shadow-sm bg-[#FDFBF7] overflow-hidden flex flex-col">
+
+        <!-- Header -->
+        <header class="px-6 pt-12 pb-6 sticky top-0 bg-[#FDFBF7]/90 backdrop-blur-md z-10 shrink-0">
+            <div class="flex justify-between items-end mb-4">
+                <div>
+                    <h1 class="text-3xl font-bold text-[#322F2A] tracking-tight">Daily Routines</h1>
+                    <p id="header-date" class="text-[#8C847A] text-sm mt-1 font-medium"></p>
+                </div>
+                <button id="edit-btn" onclick="toggleEditMode()"
+                    class="p-2 rounded-full transition-colors text-[#8C847A] hover:bg-[#F3EFEB]">
+                    <i data-lucide="edit-3" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="progress-container" class="space-y-2 hidden">
+                <div class="flex justify-between text-xs font-semibold text-[#8C847A]">
+                    <span>Progress</span>
+                    <span id="progress-text">0 / 0</span>
+                </div>
+                <div class="h-2 w-full bg-[#EAE4D9] rounded-full overflow-hidden">
+                    <div id="progress-bar-fill"
+                        class="h-full bg-[#A3B18A] rounded-full transition-all duration-500 ease-out" style="width: 0%">
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Task List -->
+        <main id="task-list" class="px-6 pb-32 flex-grow overflow-y-auto">
+            <!-- Tasks will be injected here by JS -->
+        </main>
+
+        <!-- Floating Action Button -->
+        <div class="fixed bottom-8 left-0 right-0 max-w-md mx-auto px-6 pointer-events-none flex justify-end z-20">
+            <button onclick="openModal()"
+                class="pointer-events-auto bg-[#4A443E] text-[#FDFBF7] w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-[#4A443E]/20 hover:bg-[#322F2A] transition-transform active:scale-95">
+                <i data-lucide="plus" class="w-6 h-6 stroke-[2.5]"></i>
+            </button>
+        </div>
+
+        <!-- Add Task Modal Backdrop -->
+        <div id="add-modal"
+            class="fixed inset-0 max-w-md mx-auto bg-[#322F2A]/40 backdrop-blur-sm z-30 flex flex-col justify-end opacity-0 pointer-events-none">
+            <!-- Modal Content -->
+            <div id="modal-content" class="bg-[#FDFBF7] w-full rounded-t-3xl p-6 shadow-2xl translate-y-full">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-[#322F2A]">New Daily Task</h2>
+                    <button onclick="closeModal()"
+                        class="p-2 text-[#8C847A] bg-[#EAE4D9] rounded-full hover:bg-[#DCD6CC]">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <form id="add-task-form" onsubmit="addTask(event)" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-[#655F55] mb-2">
+                            Task description
+                        </label>
+                        <input type="text" id="new-task-name" placeholder="e.g. 60 Pushups"
+                            class="w-full bg-white border border-[#EAE4D9] rounded-xl px-4 py-3.5 text-[#322F2A] placeholder-[#C2BAA6] focus:outline-none focus:ring-2 focus:ring-[#A3B18A] focus:border-transparent transition-shadow text-[17px]" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-[#655F55] mb-2">
+                            Times per day (Target)
+                        </label>
+                        <div class="flex items-center space-x-4">
+                            <input type="number" id="new-task-target" min="1" max="999" value="1"
+                                class="w-24 bg-white border border-[#EAE4D9] rounded-xl px-4 py-3.5 text-[#322F2A] focus:outline-none focus:ring-2 focus:ring-[#A3B18A] focus:border-transparent text-center font-semibold text-[17px]" />
+                            <span class="text-[#8C847A] text-sm font-medium">
+                                (Leave as 1 for a simple checkbox)
+                            </span>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="submit-task-btn" disabled
+                        class="w-full bg-[#A3B18A] text-white font-bold text-[17px] py-4 rounded-xl mt-4 shadow-sm shadow-[#A3B18A]/30 disabled:opacity-50 disabled:shadow-none hover:bg-[#92A078] active:scale-[0.98] transition-all">
+                        Save Task
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- State ---
+        let tasks = [];
+        let lastDate = '';
+        let isEditing = false;
+
+        // --- Utilities ---
+        const getLocalToday = () => {
+            const d = new Date();
+            return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+        };
+
+        const escapeHTML = (str) => {
+            return str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag]));
+        };
+
+        // --- Initialization ---
+        const init = () => {
+            // Set header date
+            document.getElementById('header-date').textContent = new Date().toLocaleDateString(undefined, {
+                weekday: 'long', month: 'long', day: 'numeric'
+            });
+
+            // Load from LocalStorage
+            const savedData = localStorage.getItem('dailyTasksData');
+            if (savedData) {
+                try {
+                    const parsed = JSON.parse(savedData);
+                    if (parsed.tasks) tasks = parsed.tasks;
+                    if (parsed.lastDate) lastDate = parsed.lastDate;
+                } catch (e) {
+                    console.error("Failed to parse local storage", e);
+                }
+            } else {
+                lastDate = getLocalToday();
+            }
+
+            checkDayReset();
+            render();
+
+            // Check for day reset every minute
+            setInterval(checkDayReset, 60000);
+
+            // Input listener to enable/disable submit button
+            document.getElementById('new-task-name').addEventListener('input', (e) => {
+                document.getElementById('submit-task-btn').disabled = !e.target.value.trim();
+            });
+
+            // Initialize icons
+            lucide.createIcons();
+        };
+
+        // --- Core Logic ---
+        const saveData = () => {
+            localStorage.setItem('dailyTasksData', JSON.stringify({ tasks, lastDate }));
+        };
+
+        const checkDayReset = () => {
+            const today = getLocalToday();
+            if (today !== lastDate) {
+                tasks = tasks.map(t => ({ ...t, completed: 0 }));
+                lastDate = today;
+                saveData();
+                render();
+            }
+        };
+
+        const addTask = (e) => {
+            e.preventDefault();
+            const nameInput = document.getElementById('new-task-name');
+            const targetInput = document.getElementById('new-task-target');
+
+            const name = nameInput.value.trim();
+            const target = Math.max(1, parseInt(targetInput.value) || 1);
+
+            if (!name) return;
+
+            tasks.push({
+                id: crypto.randomUUID(),
+                name: name,
+                target: target,
+                completed: 0,
+                createdAt: Date.now()
+            });
+
+            saveData();
+            render();
+            closeModal();
+
+            // Reset form
+            nameInput.value = '';
+            targetInput.value = '1';
+            document.getElementById('submit-task-btn').disabled = true;
+        };
+
+        const toggleTask = (id) => {
+            if (isEditing) return;
+
+            tasks = tasks.map(task => {
+                if (task.id === id) {
+                    if (task.completed >= task.target) {
+                        return { ...task, completed: 0 };
+                    }
+                    return { ...task, completed: task.completed + 1 };
+                }
+                return task;
+            });
+
+            saveData();
+            render();
+        };
+
+        const deleteTask = (id, event) => {
+            event.stopPropagation();
+            tasks = tasks.filter(t => t.id !== id);
+            saveData();
+            render();
+        };
+
+        const toggleEditMode = () => {
+            isEditing = !isEditing;
+            const editBtn = document.getElementById('edit-btn');
+
+            if (isEditing) {
+                editBtn.classList.remove('text-[#8C847A]', 'hover:bg-[#F3EFEB]');
+                editBtn.classList.add('bg-[#EAE4D9]', 'text-[#322F2A]');
+                editBtn.innerHTML = '<i data-lucide="x" class="w-5 h-5"></i>';
+            } else {
+                editBtn.classList.add('text-[#8C847A]', 'hover:bg-[#F3EFEB]');
+                editBtn.classList.remove('bg-[#EAE4D9]', 'text-[#322F2A]');
+                editBtn.innerHTML = '<i data-lucide="edit-3" class="w-5 h-5"></i>';
+            }
+            lucide.createIcons();
+            render();
+        };
+
+        // --- Modal Control ---
+        const openModal = () => {
+            const modal = document.getElementById('add-modal');
+            const content = document.getElementById('modal-content');
+
+            modal.classList.remove('pointer-events-none');
+            // Small delay for CSS transitions to kick in
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('translate-y-full');
+            });
+
+            setTimeout(() => {
+                document.getElementById('new-task-name').focus();
+            }, 300);
+        };
+
+        const closeModal = () => {
+            const modal = document.getElementById('add-modal');
+            const content = document.getElementById('modal-content');
+
+            modal.classList.add('opacity-0');
+            content.classList.add('translate-y-full');
+
+            setTimeout(() => {
+                modal.classList.add('pointer-events-none');
+            }, 300);
+        };
+
+        // --- Rendering ---
+        const render = () => {
+            const listEl = document.getElementById('task-list');
+            const progressContainer = document.getElementById('progress-container');
+            const progressText = document.getElementById('progress-text');
+            const progressBarFill = document.getElementById('progress-bar-fill');
+
+            // 1. Update Progress
+            const totalTasks = tasks.length;
+            const completedTasks = tasks.filter(t => t.completed >= t.target).length;
+
+            if (totalTasks > 0) {
+                progressContainer.classList.remove('hidden');
+                progressText.textContent = `${completedTasks} / ${totalTasks}`;
+                const percent = Math.round((completedTasks / totalTasks) * 100);
+                progressBarFill.style.width = `${percent}%`;
+            } else {
+                progressContainer.classList.add('hidden');
+            }
+
+            // 2. Render Tasks
+            if (tasks.length === 0) {
+                listEl.innerHTML = `
+                    <div class="text-center mt-24 text-[#8C847A]">
+                        <div class="w-16 h-16 bg-[#EAE4D9] rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="check" class="w-7 h-7 text-[#C2BAA6]"></i>
+                        </div>
+                        <p class="font-medium text-lg text-[#655F55]">No tasks yet</p>
+                        <p class="text-sm mt-1">Tap the + button to add your daily habits.</p>
+                    </div>
+                `;
+            } else {
+                listEl.innerHTML = `<div class="space-y-3">` + tasks.map(task => {
+                    const isDone = task.completed >= task.target;
+                    const safeName = escapeHTML(task.name);
+
+                    // Box styling based on state
+                    let boxClasses = `relative group flex items-center p-4 rounded-2xl transition-all duration-300 `;
+                    if (isEditing) {
+                        boxClasses += `bg-white border border-[#EAE4D9] shadow-sm cursor-default`;
+                    } else if (isDone) {
+                        boxClasses += `bg-[#F4F7F0] border border-[#D5E0C5] cursor-pointer`;
+                    } else {
+                        boxClasses += `bg-white border border-[#EAE4D9] shadow-sm active:scale-[0.98] cursor-pointer`;
+                    }
+
+                    // Indicator (Checkbox or Count)
+                    let indicatorHtml = '';
+                    if (isDone) {
+                        indicatorHtml = `
+                            <div class="w-7 h-7 rounded-full bg-[#A3B18A] flex items-center justify-center text-white shadow-sm">
+                                <i data-lucide="check" class="w-4 h-4 stroke-[3]"></i>
+                            </div>`;
+                    } else {
+                        indicatorHtml = `
+                            <div class="w-7 h-7 rounded-full border-2 border-[#DCD6CC] flex items-center justify-center text-[#8C847A] text-xs font-bold">
+                                ${task.target > 1 ? task.completed : ''}
+                            </div>`;
+                    }
+
+                    // Text styling
+                    let textClasses = `font-semibold text-[17px] transition-colors `;
+                    if (isDone) {
+                        textClasses += `text-[#7D8A66] line-through decoration-[#A3B18A]/40`;
+                    } else {
+                        textClasses += `text-[#4A443E]`;
+                    }
+
+                    // Delete button HTML
+                    let deleteBtnHtml = isEditing ? `
+                        <button 
+                            onclick="deleteTask('${task.id}', event)"
+                            class="p-2 -mr-2 text-[#D97777] bg-[#FFF5F5] rounded-full"
+                        >
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    ` : '';
+
+                    // Target subtext
+                    let subtextHtml = (task.target > 1 && !isDone) ? `
+                        <p class="text-xs font-medium text-[#8C847A] mt-0.5">
+                            ${task.completed} of ${task.target} completed
+                        </p>
+                    ` : '';
+
+                    return `
+                        <div onclick="toggleTask('${task.id}')" class="${boxClasses}">
+                            <div class="shrink-0 mr-4">
+                                ${indicatorHtml}
+                            </div>
+                            <div class="flex-grow pr-2">
+                                <p class="${textClasses}">${safeName}</p>
+                                ${subtextHtml}
+                            </div>
+                            ${deleteBtnHtml}
+                        </div>
+                    `;
+                }).join('') + `</div>`;
+            }
+
+            // Re-initialize icons for newly added elements
+            lucide.createIcons();
+        };
+
+        // Run setup on load
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
