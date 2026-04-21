@@ -201,7 +201,7 @@
             if (!name) return;
 
             tasks.push({
-                id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2), ,
+                id: crypto.randomUUID(),
                 name: name,
                 target: target,
                 completed: 0,
